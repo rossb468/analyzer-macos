@@ -18,6 +18,7 @@ struct InspectorView: View {
             case .equaliser: EqualiserInspector(model: model)
             case .measure: MeasureInspector(model: model)
             case .spectrogram: spectrogram
+            case .generator: GeneratorInspector(model: model)
             case .traces: TracesInspector(model: model)
             }
         }

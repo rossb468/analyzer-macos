@@ -16,6 +16,7 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable {
     case transfer
     case measure
     case spectrogram
+    case generator
     case equaliser
     case traces
 
@@ -24,7 +25,7 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable {
     /// Sections that decide what the plot draws, listed above the editors.
     static let analysis: [AppSection] = [.rta, .transfer, .measure, .spectrogram]
     /// Sections that edit something drawn over whatever analysis is running.
-    static let editors: [AppSection] = [.equaliser, .traces]
+    static let editors: [AppSection] = [.generator, .equaliser, .traces]
 
     var title: String {
         switch self {
@@ -32,6 +33,7 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable {
         case .transfer: "Transfer"
         case .measure: "Measure"
         case .spectrogram: "Spectrogram"
+        case .generator: "Generator"
         case .equaliser: "Equaliser"
         case .traces: "Traces"
         }
@@ -43,6 +45,7 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable {
         case .transfer: "arrow.left.arrow.right"
         case .measure: "dot.radiowaves.left.and.right"
         case .spectrogram: "square.grid.3x3.fill"
+        case .generator: "waveform.path"
         case .equaliser: "slider.vertical.3"
         case .traces: "square.stack.3d.up"
         }
@@ -56,7 +59,7 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .rta, .spectrogram, .measure: AnalyzerMode_Spectrum
         case .transfer: AnalyzerMode_Transfer
-        case .equaliser, .traces: nil
+        case .generator, .equaliser, .traces: nil
         }
     }
 }
@@ -375,6 +378,81 @@ final class AnalyzerModel: ObservableObject {
     func trimEq() {
         session?.trimEq()
         refreshEq()
+    }
+
+    // ----------------------------------------------------------- generator -
+
+    /// What the generator section is set to. Separate from `signal`, which is
+    /// what the session is currently playing: you can dial up a sweep to write
+    /// without that silencing the pink noise you are measuring with.
+    @Published var generatorSignal: AnalyzerSignal = AnalyzerSignal_PinkNoise
+    @Published var generatorHz: Float = 1000
+    @Published var generatorEndHz: Float = 20_000
+    @Published var generatorLevelDb: Float = -12
+    @Published var generatorSeconds: Float = 4
+    @Published var generatorDepth: AnalyzerSampleDepth = AnalyzerSampleDepth_Float32
+    /// Name of the last file written, for the readout.
+    @Published var generatorWrote: String?
+
+    /// Ask for a location and write the generated signal there.
+    ///
+    /// Rendering is the core's, so the file is the signal that would be played
+    /// rather than a second implementation of it.
+    func writeSignal() {
+        let panel = NSSavePanel()
+        panel.title = "Write signal"
+        panel.nameFieldStringValue = Self.signalFileName(
+            generatorSignal,
+            hz: generatorHz,
+            seconds: generatorSeconds
+        )
+        panel.allowedContentTypes = [UTType.wav]
+        panel.canCreateDirectories = true
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        var status = AnalyzerStatus()
+        let rate = Float(devices.first { $0.uid == selectedDeviceUID }?.sampleRate ?? 48_000)
+        let frames = url.path.withCString { path in
+            analyzer_write_signal(
+                path,
+                generatorSignal,
+                generatorHz,
+                generatorEndHz,
+                generatorLevelDb,
+                generatorSeconds,
+                rate,
+                generatorDepth,
+                &status
+            )
+        }
+
+        if frames == 0 {
+            generatorWrote = nil
+            errorMessage = withUnsafeBytes(of: status.message) { raw in
+                String(decoding: raw.prefix { $0 != 0 }, as: UTF8.self)
+            }
+        } else {
+            generatorWrote = url.lastPathComponent
+            errorMessage = nil
+        }
+    }
+
+    /// A name that says what the file contains, so a folder of test signals is
+    /// readable without opening any of them.
+    private static func signalFileName(
+        _ signal: AnalyzerSignal,
+        hz: Float,
+        seconds: Float
+    ) -> String {
+        let length = String(format: "%.0fs", seconds)
+        switch signal {
+        case AnalyzerSignal_Sine: return "sine-\(formatFrequency(hz))-\(length).wav"
+        case AnalyzerSignal_PinkNoise: return "pink-\(length).wav"
+        case AnalyzerSignal_WhiteNoise: return "white-\(length).wav"
+        case AnalyzerSignal_Sweep: return "sweep-\(length).wav"
+        default: return "signal.wav"
+        }
     }
 
     // --------------------------------------------------------- measurement -

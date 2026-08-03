@@ -8,12 +8,23 @@
 # out a bundle. It also means CI can build the app without Xcode project
 # tooling.
 #
+# The core lives in core/, a submodule. Everything Rust happens inside it and
+# nothing in this repository is compiled by cargo.
+#
 # Usage: ./build.sh [--release] [--run]
 
 set -euo pipefail
 
 cd "$(dirname "$0")"
-ROOT="$(cd ../.. && pwd)"
+# The Rust core is a submodule pinned to a known revision, so this repository
+# builds against one specific core rather than whatever happens to be checked
+# out beside it. `git clone --recursive`, or `git submodule update --init`.
+ROOT="$(cd core && pwd)"
+
+if [[ ! -f "$ROOT/Cargo.toml" ]]; then
+    echo "error: core/ is empty - run: git submodule update --init" >&2
+    exit 1
+fi
 
 # Plain strings rather than arrays: macOS still ships bash 3.2, where expanding
 # an empty array under `set -u` is an error.

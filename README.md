@@ -10,7 +10,7 @@ measurement tool. Swift and SwiftUI, with two Metal renderers.
 
 ## Building
 
-The Rust core is a submodule pinned to a known revision, so this repository
+The C++ core is a submodule pinned to a known revision, so this repository
 builds against one specific core rather than whatever happens to be checked out
 beside it.
 
@@ -26,9 +26,9 @@ If you already cloned without `--recursive`:
 git submodule update --init
 ```
 
-`build.sh` does three things: builds the Rust staticlib and its cbindgen header
-inside `core/`, compiles every Swift source against them, and lays out the
-bundle. There is no Xcode project — a `.pbxproj` is a large generated file that
+`build.sh` does three things: builds the core into one static library,
+`libanalyzer.a`, with CMake (`brew install cmake`); compiles every Swift source
+against it and the core's C header; and lays out the bundle. There is no Xcode project — a `.pbxproj` is a large generated file that
 is painful to review and merge, and nothing here needs one.
 
 `--release` for an optimised build, `--run` to launch it afterwards.

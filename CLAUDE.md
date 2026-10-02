@@ -1,6 +1,6 @@
 # Working on the macOS client
 
-The Swift and SwiftUI front end for `analyzer`. The Rust core is a submodule at
+The Swift and SwiftUI front end for `analyzer`. The C++ core is a submodule at
 `core/`, pinned to a revision.
 
 **Read `core/CLAUDE.md` too** — it carries the disciplines and traps for
@@ -9,8 +9,9 @@ everything below the C ABI, and most changes here are paired with one there.
 
 ## Environment
 
-- **Cargo is at `/opt/homebrew/opt/rustup/bin`, not `~/.cargo/bin`.** Export it
-  before any cargo command or the invocation fails confusingly.
+- **CMake builds the core** (`brew install cmake`); Xcode alone does not ship
+  it. `build.sh` builds only the `analyzer_bundle` target, which merges every
+  core module into `libanalyzer.a`, and links that with `-lc++`.
 - Xcode for the app. Swift 6.3+, targeting macOS 14.
 
 ## Commands
@@ -68,9 +69,10 @@ on the CPU is what makes REW's waterfall slow.
   device that can do both — an Aggregate Device on most laptops. This is the
   most confusing thing about the app for a new user; the explanations in
   `Sources/OutputHint.swift` should stay explanatory rather than becoming terse.
-- **cbindgen regenerates the header silently.** A C ABI change the Rust side is
-  perfectly happy with will break Swift, and the first sign is a compile error
-  in a file nobody touched. Build the app after any FFI change.
+- **The C header is the contract.** `core/include/analyzer.h` is hand-maintained
+  in the core, and a change there that the core's own tests are happy with can
+  still break Swift - the first sign is a compile error in a file nobody
+  touched. Build the app after any change to the core's C ABI.
 
 ## Editing
 

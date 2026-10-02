@@ -9,6 +9,3 @@ xcuserdata/
 *.xcuserstate
 DerivedData/
 
-# Generated beside the header at build time, inside the submodule.
-core/crates/analyzer-ffi/include/analyzer.h
-core/crates/analyzer-ffi/include/module.modulemap

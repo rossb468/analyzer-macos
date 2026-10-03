@@ -22,7 +22,7 @@ cd "$(dirname "$0")"
 # out beside it. `git clone --recursive`, or `git submodule update --init`.
 ROOT="$(cd core && pwd)"
 
-if [[ ! -f "$ROOT/Cargo.toml" ]]; then
+if [[ ! -f "$ROOT/CMakeLists.txt" ]]; then
     echo "error: core/ is empty - run: git submodule update --init" >&2
     exit 1
 fi
